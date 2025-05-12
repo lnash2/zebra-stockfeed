@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy Puppeteer Lambda with compatible Chromium
+
+Parameters:
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket where the Lambda deployment package is stored
+  LambdaCodeKey:
+    Type: String
+    Description: S3 key (file name) of the Lambda deployment package
+
+Resources:
+  ZebraPuppeteerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: zebra-puppeteer
+      Handler: index.handler  # Points to the 'handler' function in 'index.js'
+      Runtime: nodejs18.x
+      Timeout: 60
+      MemorySize: 1024
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: zebra-puppeteer-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLogsAndS3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: arn:aws:s3:::*/*
+
+Outputs:
+  LambdaFunctionName:
+    Description: Name of the deployed Lambda function
+    Value: !Ref ZebraPuppeteerFunction
