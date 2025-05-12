@@ -1,0 +1,38 @@
+name: Deploy to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    - name: Install dependencies
+      run: |
+        npm install
+
+    - name: Zip Lambda function
+      run: |
+        zip -r zebra-puppeteer.zip index.js node_modules/
+
+    - name: Upload Lambda to S3
+      run: |
+        aws s3 cp zebra-puppeteer.zip s3://zebra-lambda-deploy/zebra-puppeteer.zip
+
+    - name: Update CloudFormation Stack
+      run: |
+        aws cloudformation update-stack --stack-name zebra-lambda-deploy --template-body file://zebra-puppeteer-lambda.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=LambdaCodeBucket,ParameterValue=zebra-lambda-deploy ParameterKey=LambdaCodeKey,ParameterValue=zebra-puppeteer.zip
